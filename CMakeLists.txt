@@ -3,7 +3,7 @@ project(SimpleLang)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(ANTLR_JAR ${PROJECT_SOURCE_DIR}/antlr-4.13.2-complete.jar)
+set(ANTLR_JAR ${PROJECT_SOURCE_DIR}/ThirdParty/antlr4/antlr-4.13.2-complete.jar)
 set(GRAMMAR_FILE ${CMAKE_SOURCE_DIR}/SimpleLang.g4)
 set(GENERATED_SRC_DIR ${CMAKE_BINARY_DIR}/generated)
 
@@ -19,10 +19,10 @@ add_custom_command(
 
 include_directories(
   ${GENERATED_SRC_DIR}
-  external/antlr4-runtime/runtime/src/Cpp
+  ThirdParty/antlr4/runtime-cpp
 )
 
-add_subdirectory(external/antlr4-runtime/runtime/Cpp)
+add_subdirectory(ThirdParty/antlr4/runtime-cpp)
 
 add_executable(SimpleLang
   main.cpp
