@@ -111,8 +111,11 @@ CompilationResults ByteCodeGenerator::get_results() const {
     }
 
     return {
-        m_ops,
-        main_code_index,
+        {
+            m_ops,
+            {},
+            main_code_index,
+        },
         m_error
     };
 }

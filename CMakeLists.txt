@@ -36,6 +36,7 @@ add_executable(SimpleLang
   byte_code_enum_translation.cpp
   compiler.cpp
   compiler_visitor.cpp
+  program.cpp
   ${GENERATED_SRC_DIR}/SimpleLangLexer.cpp
   ${GENERATED_SRC_DIR}/SimpleLangParser.cpp
 )

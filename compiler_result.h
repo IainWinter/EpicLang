@@ -1,6 +1,6 @@
 #pragma once
 
-#include "byte_code_types.h"
+#include "program.h"
 
 #include <vector>
 #include <variant>
@@ -22,7 +22,6 @@ struct CompilationError {
 };
 
 struct CompilationResults {
-    std::vector<ByteCodeOp> operations;
-    size_t main_code_index;
+    Program program;
     CompilationError error;
 };

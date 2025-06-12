@@ -5,11 +5,11 @@
 
 #include <unordered_map>
 
-ByteCodeVm::ByteCodeVm(const std::vector<ByteCodeOp>& operations, size_t program_counter)
-    : m_operations (operations)
+ByteCodeVm::ByteCodeVm(const Program& program)
+    : m_program (program)
 {
-    m_program_counter = program_counter;
-    m_next_program_counter = program_counter;
+    m_program_counter = program.main_code_index;
+    m_next_program_counter = m_program_counter;
 }
 
 void ByteCodeVm::execute() {
@@ -26,26 +26,7 @@ void ByteCodeVm::execute_op() {
 
 void ByteCodeVm::print() const {
     printf("\033[2J\033[H");
-    printf("Program:\n");
-    for (size_t i = 0; i < m_operations.size(); i++) {
-        const ByteCodeOp& op_ = m_operations.at(i);
-
-        bool isCurrent = (i == m_program_counter);
-        if (isCurrent) {
-            printf("\033[1;33m");
-        }
-
-        printf("%s%3zu : ",  isCurrent ? ">" : " ", i);
-        print_byte_code(op_);
-
-        if (isCurrent) {
-            printf("\033[0m");
-        }
-
-        printf("\n");
-    }
-
-    printf("\nProgram Counter: %zu\n", m_program_counter);
+    m_program.print(m_program_counter);
 
     printf("\nCall Stack:\n");
     for (size_t i = 0; i < m_call_stack.size(); ++i) {
@@ -67,7 +48,7 @@ void ByteCodeVm::print() const {
 }
 
 bool ByteCodeVm::get_is_not_halted() const {
-    return m_program_counter < m_operations.size();
+    return m_program_counter < m_program.operations.size();
 }
 
 size_t ByteCodeVm::get_program_counter() const {
@@ -84,7 +65,7 @@ const ByteCodeVmState ByteCodeVm::get_state() const {
 }
 
 void ByteCodeVm::execute_op_switch() {
-    const ByteCodeOp& op = m_operations.at(m_program_counter);
+    const ByteCodeOp& op = m_program.operations.at(m_program_counter);
 
     switch (op.type) {
         case OpType::PUSH_LITERAL: {
@@ -121,7 +102,7 @@ void ByteCodeVm::execute_op_switch() {
 
         case OpType::RETURN: {
             if (m_call_stack.size() == 0) {
-                m_next_program_counter = m_operations.size();
+                m_next_program_counter = m_program.operations.size();
                 break;
             }
 

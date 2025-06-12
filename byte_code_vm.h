@@ -2,6 +2,7 @@
 
 #include "byte_stack.h"
 #include "byte_code_types.h"
+#include "program.h"
 
 #include <unordered_map>
 
@@ -14,7 +15,7 @@ struct ByteCodeVmState {
 
 class ByteCodeVm {
 public:
-    ByteCodeVm(const std::vector<ByteCodeOp>& operations, size_t program_counter);
+    ByteCodeVm(const Program& program);
 
     void execute();
     
@@ -42,5 +43,5 @@ private:
     size_t m_program_counter;
     size_t m_next_program_counter;
 
-    const std::vector<ByteCodeOp>& m_operations;
+    const Program& m_program;
 };

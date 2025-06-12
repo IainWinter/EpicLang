@@ -12,12 +12,14 @@ struct TestResults {
 
 TestResults test_run(std::string_view text) {
     CompilationResults compilation = compile(text);
-    
+
     if (compilation.error.type != CompilationErrorType::NONE) {
         return { compilation, {} };
     }
 
-    ByteCodeVm vm(compilation.operations, compilation.main_code_index);
+    compilation.program.print();
+
+    ByteCodeVm vm(compilation.program);
     vm.execute();
 
     return { compilation, vm.get_state() };
@@ -139,7 +141,7 @@ TEST(return_statement) {
 
     assert(test.compilation.error.type == CompilationErrorType::NONE);
 
-    assert(test.compilation.operations == std::vector<ByteCodeOp>({
+    assert(test.compilation.program.operations == std::vector<ByteCodeOp>({
         { OpType::PUSH_LITERAL, ByteCodePushLiteralOp{ Type::INT, 1 } },
         { OpType::RETURN }
     }));
@@ -177,7 +179,7 @@ TEST(if_statement) {
 
     assert(test.compilation.error.type == CompilationErrorType::NONE);
 
-    assert(test.compilation.operations == std::vector<ByteCodeOp>({
+    assert(test.compilation.program.operations == std::vector<ByteCodeOp>({
         { OpType::PUSH_LITERAL, ByteCodePushLiteralOp{ Type::INT, 0 } },
         { OpType::STORE_VARIABLE, ByteCodeStoreVariableOp{ Type::INT, "x" } },
         { OpType::PUSH_VARIABLE, ByteCodePushVariableOp{ Type::INT, "x" } },

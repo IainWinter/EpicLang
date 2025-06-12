@@ -16,7 +16,7 @@ CompilationResults compile(std::string_view text) {
 
     if (parser.getNumberOfSyntaxErrors() > 0) {
         printf("Parsing failed: syntax errors encountered\n");
-        return {{}, 0, { CompilationErrorType::PARSE_ERROR, {} }};
+        return {{}, { CompilationErrorType::PARSE_ERROR }};
     }
     
     printf("AST\n");
