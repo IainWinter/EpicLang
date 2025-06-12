@@ -24,14 +24,15 @@ int main() {
         return 1;
     }
 
-    ByteCodeVm vm(results.operations, results.main_code_index);
-    ByteCodeVmDebugger debugger(vm);
+    results.program.print();
 
-    debugger.breakpoint_add(results.main_code_index);
-    while (vm.get_is_not_halted()) {
-        debugger.breakpoint_step();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    }
+    // ByteCodeVm vm(results.program);
+    // ByteCodeVmDebugger debugger(vm);
+
+    // while (vm.get_is_not_halted()) {
+    //     debugger.breakpoint_step();
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // }
     
     return 0;
 }
