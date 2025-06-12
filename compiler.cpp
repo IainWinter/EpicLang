@@ -31,10 +31,10 @@ CompilationResults compile(std::string_view text) {
         printf("from %zd:%zd\n", error.startLine, error.startCharacterIndex);
         printf("to %zd:%zd\n", error.stopLine, error.stopCharacterIndex);
         
-        std::string text = input.getText(antlr4::misc::Interval(error.start, error.stop));
+        std::string error_string = input.getText(antlr4::misc::Interval(error.start, error.stop));
         
         printf("\n------------------------------------------------\n");
-        printf(text.c_str());
+        printf("%s", error_string.c_str());
         printf("\n------------------------------------------------\n");
     }
 

@@ -36,6 +36,12 @@ void print_byte_code(const ByteCodeOp& op) {
 
             break;
         }
+        case OpType::JUMP_IF_FALSE: {
+            const auto& operand = std::get<ByteCodeJumpOp>(op.operand);
+            printf("%zd", operand.code_index);
+
+            break;
+        }
     }
 }
 

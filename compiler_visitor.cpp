@@ -31,6 +31,30 @@ public:
         return std::any_cast<Type>(visit(context));
     }
 
+    Type visit_expression(SimpleLangParser::ExpressionComparisonContext* context) {
+        return std::any_cast<Type>(visit(context));
+    }
+
+    Type visit_expression(SimpleLangParser::ExpressionAddSubtractContext* context) {
+        return std::any_cast<Type>(visit(context));
+    }
+
+    Type visit_expression(SimpleLangParser::ExpressionMultiplyDivideContext* context) {
+        return std::any_cast<Type>(visit(context));
+    }
+
+    Type visit_expression(SimpleLangParser::ExpressionUnaryContext* context) {
+        return std::any_cast<Type>(visit(context));
+    }
+    
+    Type visit_expression(SimpleLangParser::ExpressionPrimaryContext* context) {
+        return std::any_cast<Type>(visit(context));
+    }
+
+    Type visit_expression(SimpleLangParser::ExpressionCallFunctionContext* context) {
+        return std::any_cast<Type>(visit(context));
+    }
+
     Type visit_type(SimpleLangParser::TypeContext* context) {
         return std::any_cast<Type>(visit(context));
     }
@@ -161,6 +185,16 @@ public:
     std::any visitStatement(SimpleLangParser::StatementContext *context) {
         printf("statement %s\n", context->getText().c_str());
         return visitChildren(context); 
+    }
+
+    std::any visitStatementExpression(SimpleLangParser::StatementExpressionContext *context) {
+        printf("statement expression %s\n", context->getText().c_str());
+
+        visitChildren(context);
+
+        emit({ OpType::POP, {}});
+
+        return nullptr;
     }
 
     std::any visitStatementVariableDeclaration(SimpleLangParser::StatementVariableDeclarationContext *context) {
@@ -298,11 +332,20 @@ public:
         return visitChildren(context);
     }
 
+    std::any visitExpression(SimpleLangParser::ExpressionContext *context) {
+        printf("expression %s\n", context->getText().c_str());
+        return visitChildren(context);
+    }
+
     std::any visitExpressionComparison(SimpleLangParser::ExpressionComparisonContext *context) {
         printf("expression comparaison %s\n", context->getText().c_str());
 
-        Type left_type = visit_expression(context->expression(0));
-        Type right_type = visit_expression(context->expression(1));
+        if (context->expressionAddSubtract().size() == 1) {
+            return visitChildren(context);
+        }
+
+        Type left_type = visit_expression(context->expressionAddSubtract(0));
+        Type right_type = visit_expression(context->expressionAddSubtract(1));
         BinaryOperatorType op = binary_operator_type_from_string(context->op->getText());
 
         return emit_binary_op(context, left_type, right_type, op);
@@ -311,8 +354,12 @@ public:
     std::any visitExpressionAddSubtract(SimpleLangParser::ExpressionAddSubtractContext *context) {
         printf("expression add subtract %s\n", context->getText().c_str());
 
-        Type left_type = visit_expression(context->expression(0));
-        Type right_type = visit_expression(context->expression(1));
+        if (context->expressionMultiplyDivide().size() == 1) {
+            return visitChildren(context);
+        }
+
+        Type left_type = visit_expression(context->expressionMultiplyDivide(0));
+        Type right_type = visit_expression(context->expressionMultiplyDivide(1));
         BinaryOperatorType op = binary_operator_type_from_string(context->op->getText());
 
         return emit_binary_op(context, left_type, right_type, op);
@@ -321,8 +368,12 @@ public:
     std::any visitExpressionMultiplyDivide(SimpleLangParser::ExpressionMultiplyDivideContext *context) {
         printf("expression multiply divide %s\n", context->getText().c_str());
 
-        Type left_type = visit_expression(context->expression(0));
-        Type right_type = visit_expression(context->expression(1));
+        if (context->expressionUnary().size() == 1) {
+            return visitChildren(context);
+        }
+
+        Type left_type = visit_expression(context->expressionUnary(0));
+        Type right_type = visit_expression(context->expressionUnary(1));
         BinaryOperatorType op = binary_operator_type_from_string(context->op->getText());
 
         return emit_binary_op(context, left_type, right_type, op);
@@ -331,6 +382,11 @@ public:
     std::any visitExpressionUnary(SimpleLangParser::ExpressionUnaryContext *context) {
         printf("expression unary %s\n", context->getText().c_str());
         // todo:
+        return visitChildren(context);
+    }
+
+    std::any visitExpressionPrimary(SimpleLangParser::ExpressionPrimaryContext *context) {
+        printf("expression primary %s\n", context->getText().c_str());
         return visitChildren(context);
     }
 
@@ -357,11 +413,6 @@ public:
         return function.value().type;
     }
 
-    std::any visitExpressionParentheses(SimpleLangParser::ExpressionParenthesesContext *context) {
-        printf("expression parentheses %s\n", context->getText().c_str());
-        return visit(context->expression());
-    }
-
     std::any visitExpressionVariableReference(SimpleLangParser::ExpressionVariableReferenceContext *context) {
         printf("expression variable reference %s\n", context->getText().c_str());
 
@@ -381,11 +432,6 @@ public:
         });
 
         return variable.value().type; 
-    }
-
-    std::any visitExpressionLiteral(SimpleLangParser::ExpressionLiteralContext *context) {
-        printf("expression literal %s\n", context->getText().c_str());
-        return visitChildren(context); 
     }
 
     std::any visitLiteral(SimpleLangParser::LiteralContext *context) {

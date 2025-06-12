@@ -3,6 +3,7 @@
 
 #include "test.h"
 
+#include <thread>
 #include <fstream>
 #include <sstream>
 
@@ -26,17 +27,11 @@ int main() {
     ByteCodeVm vm(results.operations, results.main_code_index);
     ByteCodeVmDebugger debugger(vm);
 
-    debugger.breakpoint_add(3);
-    debugger.breakpoint_add(6);
-    debugger.breakpoint_continue();
-    debugger.breakpoint_step();
-    debugger.breakpoint_step();
-    debugger.breakpoint_step();
-    debugger.breakpoint_remove(6);
-    debugger.breakpoint_continue();
-    debugger.breakpoint_remove(3);
-    debugger.breakpoint_step();
-    debugger.breakpoint_continue();
+    debugger.breakpoint_add(results.main_code_index);
+    while (vm.get_is_not_halted()) {
+        debugger.breakpoint_step();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
     
     return 0;
 }

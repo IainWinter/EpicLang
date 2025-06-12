@@ -41,3 +41,9 @@ add_executable(SimpleLang
 )
 
 target_link_libraries(SimpleLang antlr4_static)
+
+if(MSVC)
+    target_compile_options(SimpleLang PRIVATE /W4)
+else()
+    target_compile_options(SimpleLang PRIVATE -Wall -Wextra)
+endif()

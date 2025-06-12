@@ -25,6 +25,8 @@ public:
 
     void pop(size_t item_count = 1);
 
+    size_t size() const;
+
     bool equals(const ByteStack& other) const;
 
     void print() const;

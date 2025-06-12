@@ -15,6 +15,7 @@ static std::string_view s_op_type_names[] = {
     "HALT",
     "PUSH_LITERAL",
     "PUSH_VARIABLE",
+    "POP",
     "STORE_VARIABLE",
     "CALL_FUNCTION",
     "RETURN",

@@ -106,6 +106,11 @@ void ByteCodeVm::execute_op_switch() {
             break;
         }
 
+        case OpType::POP: {
+            m_stack.pop();
+            break;
+        }
+
         case OpType::CALL_FUNCTION: {
             const ByteCodeCallFunctionOp& operand = std::get<ByteCodeCallFunctionOp>(op.operand);
             m_call_stack.push_back(m_program_counter);

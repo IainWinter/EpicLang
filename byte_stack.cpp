@@ -80,6 +80,10 @@ void ByteStack::pop(size_t item_count) {
     m_buffer.erase(m_buffer.begin() + head, m_buffer.end());
 }
 
+size_t ByteStack::size() const {
+    return m_buffer.size();
+}
+
 bool ByteStack::equals(const ByteStack& other) const {
     return m_buffer == other.m_buffer;
 }

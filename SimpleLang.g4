@@ -21,13 +21,13 @@ block
     ;
 
 statement
-    : expression ';'
-    | block
+    : block
     | statementVariableDeclaration
     | statementVariableAssignment
     | statementReturn
     | statementIf
     | statementWhile
+    | statementExpression
     ;
 
 statementVariableDeclaration
@@ -50,19 +50,47 @@ statementWhile
     : 'while' '(' expression ')' block
     ;
 
+statementExpression
+    : expressionCallFunction ';'
+    ;
+
 expressionList
     : expression (',' expression)*
     ;
 
 expression
-    : expression op=('==' | '!=' | '<' | '>' | '<=' | '>=') expression  # ExpressionComparison
-    | expression op=('+' | '-') expression                              # ExpressionAddSubtract
-    | expression op=('*' | '/') expression                              # ExpressionMultiplyDivide
-    | op=('!' | '-') expression                                         # ExpressionUnary
-    | ID '(' expressionList? ')'                                        # ExpressionCallFunction
-    | '(' expression ')'                                                # ExpressionParentheses
-    | ID                                                                # ExpressionVariableReference
-    | literal                                                           # ExpressionLiteral
+    : expressionComparison
+    ;
+
+expressionComparison
+    : expressionAddSubtract (op=('==' | '!=' | '<' | '>' | '<=' | '>=') expressionAddSubtract)?
+    ;
+
+expressionAddSubtract
+    : expressionMultiplyDivide (op=('+' | '-') expressionMultiplyDivide)*
+    ;
+
+expressionMultiplyDivide
+    : expressionUnary (op=('*' | '/') expressionUnary)*
+    ;
+
+expressionUnary
+    : (op=('!' | '-'))? expressionPrimary
+    ;
+
+expressionPrimary
+    : expressionCallFunction
+    | expressionVariableReference
+    | '(' expression ')'
+    | literal
+    ;
+
+expressionVariableReference
+    : ID
+    ;
+
+expressionCallFunction
+    : ID '(' expressionList? ')'
     ;
 
 literal

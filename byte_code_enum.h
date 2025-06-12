@@ -57,6 +57,8 @@ enum class OpType {
     PUSH_LITERAL,
     PUSH_VARIABLE,
 
+    POP,
+
     STORE_VARIABLE,
 
     CALL_FUNCTION,

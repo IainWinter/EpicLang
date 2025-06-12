@@ -222,6 +222,20 @@ TEST(for_loop) {
     assert(std::get<int>(test.execution.variables.at("x").second) == 10);
 }
 
+TEST(statement_expression_cleans_up_stack) {
+    TestResults test = test_run(
+        "void test() {"
+        "}"
+        ""
+        "void main() {"
+        "   test();"
+        "}"
+    );
+
+    assert(test.compilation.error.type == CompilationErrorType::NONE);
+    assert(test.execution.stack.size() == 0);
+}
+
 void run_tests() {
     for (const Test& test : tests) {
         printf("Test %s\n", test.name.data());
