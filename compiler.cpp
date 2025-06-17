@@ -19,8 +19,10 @@ CompilationResults compile(std::string_view text) {
         return {{}, { CompilationErrorType::PARSE_ERROR }};
     }
     
-    printf("AST\n");
+    printf("\nAST:\n");
     std::cout << tree->toStringTree(&parser) << std::endl;
+
+    printf("\nVisitor Trace:\n");
 
     CompilationResults result = generate_byte_code(tree);
     

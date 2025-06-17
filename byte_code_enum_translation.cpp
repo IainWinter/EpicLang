@@ -117,6 +117,18 @@ Type type_from_string(std::string_view name) {
     throw 0;
 }
 
+UnaryOperatorType unary_operator_type_from_string(std::string_view name) {
+    if (name == "!") {
+        return UnaryOperatorType::NOT;
+    }
+
+    if (name == "-") {
+        return UnaryOperatorType::NEGATE;
+    }
+
+    throw 0;
+}
+
 BinaryOperatorType binary_operator_type_from_string(std::string_view name) {
     if (name == "+") {
         return BinaryOperatorType::ADD;

@@ -1,7 +1,7 @@
 grammar SimpleLang;
 
 program
-    : declarationFunction* EOF
+    : (declarationFunction | statementVariableDeclaration)* EOF
     ;
 
 declarationFunction
@@ -59,34 +59,14 @@ expressionList
     ;
 
 expression
-    : expressionComparison
-    ;
-
-expressionComparison
-    : expressionAddSubtract (op=('==' | '!=' | '<' | '>' | '<=' | '>=') expressionAddSubtract)?
-    ;
-
-expressionAddSubtract
-    : expressionMultiplyDivide (op=('+' | '-') expressionMultiplyDivide)*
-    ;
-
-expressionMultiplyDivide
-    : expressionUnary (op=('*' | '/') expressionUnary)*
-    ;
-
-expressionUnary
-    : (op=('!' | '-'))? expressionPrimary
-    ;
-
-expressionPrimary
-    : expressionCallFunction
-    | expressionVariableReference
+    : expression op=('==' | '!=' | '<' | '>' | '<=' | '>=') expression
+    | expression op=('+' | '-') expression
+    | expression op=('*' | '/') expression
+    | op=('!' | '-') expression
     | '(' expression ')'
+    | expressionCallFunction
+    | ID
     | literal
-    ;
-
-expressionVariableReference
-    : ID
     ;
 
 expressionCallFunction

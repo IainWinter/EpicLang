@@ -4,8 +4,17 @@
 
 #include <vector>
 
+struct Variable {
+    Type type;
+    std::string name;
+};
+
 struct Function {
     size_t code_index;
+    Type return_type;
+    std::string name;
+    size_t argument_count;
+    std::vector<Variable> local_variables;
 };
 
 struct Program {

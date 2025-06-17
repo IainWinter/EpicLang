@@ -7,10 +7,44 @@
 
 #include "SimpleLangVisitor.h"
 
+#include <cstdio>
+#include <cstdarg>
+
+class StackLogger {
+public:
+    StackLogger() : m_indent(0) {}
+
+    void push() {
+        m_indent++;
+    }
+
+    void pop() {
+        if (m_indent > 0) {
+            m_indent--;
+        }
+    }
+
+    void operator()(const char* format, ...) const {
+        for (int i = 0; i < m_indent; ++i) {
+            printf("  ");
+        }
+
+        va_list args;
+        va_start(args, format);
+        vprintf(format, args);
+        va_end(args);
+        printf("\n");
+    }
+
+private:
+    int m_indent;
+};
+
 class BytecodeEmitter : public SimpleLangVisitor {
 public:
     ByteCodeGenerator gen;
     bool m_next_block_push_scope = true;
+    StackLogger logger;
 
     void panic(const antlr4::ParserRuleContext* context, CompilationErrorType type, CompilationErrorVariant info) {
         gen.set_error({
@@ -27,27 +61,11 @@ public:
         throw std::runtime_error("panic");
     }
 
+    Program visit_program(antlr4::tree::ParseTree* tree) {
+        return std::any_cast<Program>(visit(tree));
+    }
+
     Type visit_expression(SimpleLangParser::ExpressionContext* context) {
-        return std::any_cast<Type>(visit(context));
-    }
-
-    Type visit_expression(SimpleLangParser::ExpressionComparisonContext* context) {
-        return std::any_cast<Type>(visit(context));
-    }
-
-    Type visit_expression(SimpleLangParser::ExpressionAddSubtractContext* context) {
-        return std::any_cast<Type>(visit(context));
-    }
-
-    Type visit_expression(SimpleLangParser::ExpressionMultiplyDivideContext* context) {
-        return std::any_cast<Type>(visit(context));
-    }
-
-    Type visit_expression(SimpleLangParser::ExpressionUnaryContext* context) {
-        return std::any_cast<Type>(visit(context));
-    }
-    
-    Type visit_expression(SimpleLangParser::ExpressionPrimaryContext* context) {
         return std::any_cast<Type>(visit(context));
     }
 
@@ -55,12 +73,29 @@ public:
         return std::any_cast<Type>(visit(context));
     }
 
+    Type visit_literal(SimpleLangParser::LiteralContext* context) {
+        return std::any_cast<Type>(visit(context));
+    }
+
     Type visit_type(SimpleLangParser::TypeContext* context) {
         return std::any_cast<Type>(visit(context));
     }
 
+    Variable visit_argument(SimpleLangParser::ArgumentContext* context) {
+        return std::any_cast<Variable>(visit(context));
+    }
+
+    std::vector<Variable> visit_argument_list(SimpleLangParser::ArgumentListContext* context) {
+        return std::any_cast<std::vector<Variable>>(visit(context));
+    }
+
     void emit(ByteCodeOp&& op) {
         gen.emit(std::move(op));
+    }
+
+    Type emit_unary_op(const antlr4::ParserRuleContext* context, Type right_type, UnaryOperatorType op) {
+        // todo:
+        return right_type;
     }
 
     Type emit_binary_op(const antlr4::ParserRuleContext* context, Type left_type, Type right_type, BinaryOperatorType op) {
@@ -85,97 +120,102 @@ public:
     // Top level program
 
     std::any visitProgram(SimpleLangParser::ProgramContext *context) {
-        printf("program %s\n", context->getText().c_str());
-        return visitChildren(context); 
+        logger("program %s", context->getText().c_str());
+        logger.push();
+        gen.scope_push(ScopeType::GLOBAL);
+        visitChildren(context);
+        Program program = gen.get_program();
+        gen.scope_pop();
+        logger.pop();
+        return program;
     }
 
     // Functions
 
     std::any visitDeclarationFunction(SimpleLangParser::DeclarationFunctionContext *context) {
-        printf("declaration function %s\n", context->getText().c_str());
+        logger("declaration function %s", context->getText().c_str());
+        logger.push();
 
-        // std::vector<ArgumentListContext *> argumentList();
-        // ArgumentListContext* argumentList(size_t i);
-
-        Type type = visit_type(context->type());
+        Type return_type = visit_type(context->type());
+        std::vector<Variable> arguments = visit_argument_list(context->argumentList());
         std::string identifier = context->ID()->getText();
+        
+        CompilationErrorType err = gen.function_declare(return_type, identifier, arguments.size());
 
-        if (gen.find_function(identifier).has_value()) {
-            panic(context, CompilationErrorType::IDENTIFIED_ALREADY_DECLARED, {});
+        if (err != CompilationErrorType::NONE) {
+            panic(context, err, {});
         }
 
-        gen.store_function(identifier, type, gen.get_code_index());
+        gen.scope_push(ScopeType::FUNCTION);
 
-        gen.push_scope();
-        m_next_block_push_scope = false;
+        for (const Variable& variable : arguments) {
+            err = gen.variable_declare(variable.type, variable.name);
+            
+            if (err != CompilationErrorType::NONE) {
+                return err;
+            }
 
-        if (auto argumentList = context->argumentList()) {
-            visit(argumentList);
+            emit({
+                OpType::PUSH_VARIABLE,
+                ByteCodePushVariableOp {
+                    variable.type,
+                    variable.name
+                }
+            });
+        }
+
+        if (err != CompilationErrorType::NONE) {
+            panic(context, err, {});
         }
 
         visit(context->block());
 
-        if (   gen.get_op_count() == 0 
-            || gen.get_last_op_type() != OpType::RETURN) 
-        {
-            if (type == Type::VOID) {
-                emit(ByteCodeOp{ OpType::RETURN, {} });
-            }
+        gen.scope_pop();
 
-            else {
-                panic(context, CompilationErrorType::NON_VOID_FUNCTION_MISSING_RETURN, {});
-            }
-        }
-
-        gen.pop_scope();
+        logger.pop();
 
         return nullptr;
     }
 
     std::any visitArgumentList(SimpleLangParser::ArgumentListContext *context) {
-        printf("argument list %s\n", context->getText().c_str());
+        logger("argument list %s", context->getText().c_str());
+        logger.push();
+
+        std::vector<Variable> arguments;
+
+        std::vector<SimpleLangParser::ArgumentContext*> contexts = context->argument();
 
         // load in reverse order cus stack
-        for (auto itr = context->children.rbegin(); itr != context->children.rend(); itr++) {
-            visit(*itr);
+        for (auto itr = contexts.rbegin(); itr != contexts.rend(); itr++) {
+            arguments.push_back(visit_argument(*itr));
         }
 
-        return nullptr;
+        logger.pop();
+
+        return arguments;
     }
 
     std::any visitArgument(SimpleLangParser::ArgumentContext *context) {
-        printf("argument %s\n", context->getText().c_str());
+        logger("argument %s", context->getText().c_str());
+        logger.push();
 
         Type type = visit_type(context->type());
         std::string identifier = context->ID()->getText();
 
-        if (gen.find_variable(identifier).has_value()) {
-            panic(context, CompilationErrorType::IDENTIFIED_ALREADY_DECLARED, {});
-        }
+        logger.pop();
 
-        gen.store_variable(identifier, type);
-
-        emit({
-            OpType::STORE_VARIABLE,
-            ByteCodeStoreVariableOp { type, identifier }
-        });
-
-        return nullptr;
+        return Variable { type, identifier };
     }
 
     std::any visitBlock(SimpleLangParser::BlockContext *context) {
-        printf("block %s\n", context->getText().c_str());
+        logger("block %s", context->getText().c_str());
+        logger.push();
+        
+        gen.scope_push(ScopeType::BLOCK);
+        visitChildren(context);
+        gen.scope_pop();
 
-        if (m_next_block_push_scope) {
-            gen.push_scope();
-            visitChildren(context);
-            gen.pop_scope();
-        }
-
-        else {
-            m_next_block_push_scope = true;
-            visitChildren(context);
-        }
+        logger.pop();
 
         return nullptr;
     }
@@ -183,55 +223,65 @@ public:
     // Statement
 
     std::any visitStatement(SimpleLangParser::StatementContext *context) {
-        printf("statement %s\n", context->getText().c_str());
-        return visitChildren(context); 
+        logger("statement %s", context->getText().c_str());
+        logger.push();
+        std::any out = visitChildren(context); 
+        logger.pop();
+        return out;
     }
 
     std::any visitStatementExpression(SimpleLangParser::StatementExpressionContext *context) {
-        printf("statement expression %s\n", context->getText().c_str());
+        logger("statement expression %s", context->getText().c_str());
+        logger.push();
 
         visitChildren(context);
 
         emit({ OpType::POP, {}});
 
+        logger.pop();
+
         return nullptr;
     }
 
     std::any visitStatementVariableDeclaration(SimpleLangParser::StatementVariableDeclarationContext *context) {
-        printf("statement variable declaration %s\n", context->getText().c_str());
+        logger("statement variable declaration %s", context->getText().c_str());
+        logger.push();
 
+        Type type = visit_type(context->type());
         std::string identifier = context->ID()->getText();
 
-        if (gen.find_variable(identifier).has_value()) {
-            panic(context, CompilationErrorType::IDENTIFIED_ALREADY_DECLARED, {});
+        CompilationErrorType err = gen.variable_declare(type, identifier);
+
+        if (err != CompilationErrorType::NONE) {
+            panic(context, err, {});
         }
 
-        Type typeOfVariable = visit_type(context->type());
-        Type typeOfExpression = visit_expression(context->expression());
+        Type expression_type = visit_expression(context->expression());
 
-        if (typeOfVariable != typeOfExpression) {
+        if (type != expression_type) {
             panic(context, CompilationErrorType::TYPE_MISMATCH, {});
         }
 
         emit({
             OpType::STORE_VARIABLE,
             ByteCodeStoreVariableOp{
-                typeOfVariable,
+                type,
                 identifier
             }
         });
 
-        gen.store_variable(identifier, typeOfVariable);
+        logger.pop();
 
         return nullptr;
     }
 
     std::any visitStatementVariableAssignment(SimpleLangParser::StatementVariableAssignmentContext *context) {
-        printf("expression variable assignment %s\n", context->getText().c_str());
+        logger("expression variable assignment %s", context->getText().c_str());
+        logger.push();
 
         std::string identifier = context->ID()->getText();
 
-        if (!gen.find_variable(identifier).has_value()) {
+        if (!gen.scope_is_identifier_declared(identifier)) {
             panic(context, CompilationErrorType::IDENTIFIED_NOT_DECLARED, {});
         }
         
@@ -245,11 +295,14 @@ public:
             }
         });
 
+        logger.pop();
+
         return nullptr;
     }
 
     std::any visitStatementReturn(SimpleLangParser::StatementReturnContext *context) {
-        printf("statement return %s\n", context->getText().c_str());
+        logger("statement return %s", context->getText().c_str());
+        logger.push();
         
         Type type = Type::VOID;
 
@@ -257,20 +310,27 @@ public:
             type = visit_expression(context->expression());
         }
 
-        // verify that the return type matches the current function
+        std::optional<FunctionInfo> function = gen.function_get_current_info();
+        
+        if (!function.has_value()) {
+            panic(context, CompilationErrorType::PARSE_ERROR, {});
+        }
 
-        if (type != gen.get_current_function_type()) {
+        if (type != function.value().return_type) {
             panic(context, CompilationErrorType::TYPE_MISMATCH, {});
         }
 
         emit({ OpType::RETURN, {} });
 
+        logger.pop();
+
         return nullptr;
     }
 
     std::any visitStatementIf(SimpleLangParser::StatementIfContext *context) {
-        printf("statement if %s\n", context->getText().c_str());
-
+        logger("statement if %s", context->getText().c_str());
+        logger.push();
+        
         Type type = visit_expression(context->expression());
 
         if (type != Type::BOOL) {
@@ -290,11 +350,14 @@ public:
             ByteCodeJumpOp {after_block_code_index}
         });
 
+        logger.pop();
+
         return nullptr;
     }
 
     std::any visitStatementWhile(SimpleLangParser::StatementWhileContext *context) {
-        printf("statement while %s\n", context->getText().c_str());
+        logger("statement while %s", context->getText().c_str());
+        logger.push();
 
         size_t before_condition_code_index = gen.get_code_index();
 
@@ -322,82 +385,106 @@ public:
             ByteCodeJumpOp {after_block_code_index}
         });
 
+        logger.pop();
+
         return nullptr;
     }
     
     // Expression
 
     std::any visitExpressionList(SimpleLangParser::ExpressionListContext *context) {
-        printf("expression list %s\n", context->getText().c_str());
-        return visitChildren(context);
+        logger("expression list %s", context->getText().c_str());
+        logger.push();
+        std::any out = visitChildren(context); 
+        logger.pop();
+        return out;
     }
 
     std::any visitExpression(SimpleLangParser::ExpressionContext *context) {
-        printf("expression %s\n", context->getText().c_str());
-        return visitChildren(context);
-    }
+        logger("expression %s", context->getText().c_str());
+        logger.push();
 
-    std::any visitExpressionComparison(SimpleLangParser::ExpressionComparisonContext *context) {
-        printf("expression comparaison %s\n", context->getText().c_str());
+        Type out_expression_type = Type::VOID;
 
-        if (context->expressionAddSubtract().size() == 1) {
-            return visitChildren(context);
+        size_t expression_count = context->expression().size();
+
+        // Operations
+        if (context->op) {
+            switch (expression_count) {
+                case 1: {
+                    Type right_type = visit_expression(context->expression(0));
+                    UnaryOperatorType op = unary_operator_type_from_string(context->op->getText());
+                    out_expression_type = emit_unary_op(context, right_type, op);
+                    break;
+                }
+
+                case 2: {
+                    Type left_type = visit_expression(context->expression(0));
+                    Type right_type = visit_expression(context->expression(1));
+                    BinaryOperatorType op = binary_operator_type_from_string(context->op->getText());
+                    out_expression_type = emit_binary_op(context, left_type, right_type, op);
+                    break;
+                }
+
+                // Catch all
+                default: {
+                    panic(context, CompilationErrorType::PARSE_ERROR, {});
+                    break;
+                }
+            }
         }
 
-        Type left_type = visit_expression(context->expressionAddSubtract(0));
-        Type right_type = visit_expression(context->expressionAddSubtract(1));
-        BinaryOperatorType op = binary_operator_type_from_string(context->op->getText());
-
-        return emit_binary_op(context, left_type, right_type, op);
-    }
-
-    std::any visitExpressionAddSubtract(SimpleLangParser::ExpressionAddSubtractContext *context) {
-        printf("expression add subtract %s\n", context->getText().c_str());
-
-        if (context->expressionMultiplyDivide().size() == 1) {
-            return visitChildren(context);
+        // Parentheses
+        else if (expression_count > 0) {
+            out_expression_type = visit_expression(context);
         }
 
-        Type left_type = visit_expression(context->expressionMultiplyDivide(0));
-        Type right_type = visit_expression(context->expressionMultiplyDivide(1));
-        BinaryOperatorType op = binary_operator_type_from_string(context->op->getText());
+        // Function call
+        else if (context->expressionCallFunction()) {
+            out_expression_type = visit_expression(context->expressionCallFunction());
+        }
+        
+        // Function variable lookup
+        else if (context->ID()) {
+            std::string identifier = context->ID()->getText();
+            std::optional<Type> variable_type = gen.variable_get_type(identifier);
 
-        return emit_binary_op(context, left_type, right_type, op);
-    }
+            if (!variable_type.has_value()) {
+                panic(context, CompilationErrorType::IDENTIFIED_NOT_DECLARED, {});
+            }
 
-    std::any visitExpressionMultiplyDivide(SimpleLangParser::ExpressionMultiplyDivideContext *context) {
-        printf("expression multiply divide %s\n", context->getText().c_str());
+            emit({
+                OpType::PUSH_VARIABLE,
+                ByteCodePushVariableOp {
+                    variable_type.value(),
+                    identifier
+                }
+            });
 
-        if (context->expressionUnary().size() == 1) {
-            return visitChildren(context);
+            out_expression_type = variable_type.value();
         }
 
-        Type left_type = visit_expression(context->expressionUnary(0));
-        Type right_type = visit_expression(context->expressionUnary(1));
-        BinaryOperatorType op = binary_operator_type_from_string(context->op->getText());
+        // Literal lookup
+        else if (context->literal()) {
+            out_expression_type = visit_literal(context->literal());
+        }
 
-        return emit_binary_op(context, left_type, right_type, op);
-    }
+        // Catch all
+        else {
+            panic(context, CompilationErrorType::PARSE_ERROR, {});
+        }
 
-    std::any visitExpressionUnary(SimpleLangParser::ExpressionUnaryContext *context) {
-        printf("expression unary %s\n", context->getText().c_str());
-        // todo:
-        return visitChildren(context);
-    }
-
-    std::any visitExpressionPrimary(SimpleLangParser::ExpressionPrimaryContext *context) {
-        printf("expression primary %s\n", context->getText().c_str());
-        return visitChildren(context);
+        logger.pop();
+        return out_expression_type;
     }
 
     std::any visitExpressionCallFunction(SimpleLangParser::ExpressionCallFunctionContext *context) {
-        printf("expression call function %s\n", context->getText().c_str());
+        logger("expression call function %s", context->getText().c_str());
+        logger.push();
 
         std::string identifier = context->ID()->getText();
-        
-        std::optional<FunctionDeclaration> function = gen.find_function(identifier);
 
-        if (!function.has_value()) {
+        if (!gen.scope_is_identifier_declared(identifier)) {
             panic(context, CompilationErrorType::IDENTIFIED_NOT_DECLARED, {});
         }
 
@@ -405,39 +492,27 @@ public:
             visit(expressionList);
         }
 
+        std::optional<FunctionInfo> function = gen.function_get_info(identifier);
+
+        if (!function.has_value()) {
+            panic(context, CompilationErrorType::PARSE_ERROR, {});
+        }
+
         emit({
             OpType::CALL_FUNCTION,
             ByteCodeCallFunctionOp { function.value().code_index }
         });
 
-        return function.value().type;
-    }
+        logger.pop();
 
-    std::any visitExpressionVariableReference(SimpleLangParser::ExpressionVariableReferenceContext *context) {
-        printf("expression variable reference %s\n", context->getText().c_str());
-
-        std::string identifier = context->ID()->getText();
-        std::optional<VariableDeclaration> variable = gen.find_variable(identifier);
-
-        if (!variable.has_value()) {
-            panic(context, CompilationErrorType::IDENTIFIED_NOT_DECLARED, {});
-        }
- 
-        emit({
-            OpType::PUSH_VARIABLE,
-            ByteCodePushVariableOp {
-                variable.value().type,
-                identifier
-            }
-        });
-
-        return variable.value().type; 
+        return function.value().return_type;
     }
 
     std::any visitLiteral(SimpleLangParser::LiteralContext *context) {
         std::string valueString = context->getText();
 
-        printf("literal %s\n", valueString.c_str());
+        logger("literal %s", valueString.c_str());
+        logger.push();
 
         ByteCodePushLiteralOp literal;
 
@@ -465,14 +540,19 @@ public:
             literal
         });
 
+        logger.pop();
+
         return literal.type;
     }
 
     std::any visitType(SimpleLangParser::TypeContext *context) {
-        printf("type %s\n", context->getText().c_str());
+        logger("type %s", context->getText().c_str());
+        logger.push();
 
         std::string typeString = context->getText();
         Type type = type_from_string(typeString);
+
+        logger.pop();
 
         return type;
     }
@@ -480,17 +560,20 @@ public:
 
 CompilationResults generate_byte_code(antlr4::tree::ParseTree* tree) {
     BytecodeEmitter emitter;
-    CompilationResults result;
 
     try {
-        emitter.visit(tree);
-        result = emitter.gen.get_results();
+        return {
+            emitter.visit_program(tree),
+            {}
+        };
     }
 
     catch (std::runtime_error e) {
         printf("Exception: %s\n", e.what());
-        result = emitter.gen.get_results();
-    }
 
-    return result;
+        return {
+            {},
+            emitter.gen.get_error()
+        };
+    }
 }

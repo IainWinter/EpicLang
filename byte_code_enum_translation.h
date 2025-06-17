@@ -12,4 +12,6 @@ std::string_view compilation_error_type_to_string(CompilationErrorType type);
 
 Type type_from_string(std::string_view name);
 
+UnaryOperatorType unary_operator_type_from_string(std::string_view name);
+
 BinaryOperatorType binary_operator_type_from_string(std::string_view name);

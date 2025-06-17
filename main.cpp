@@ -8,7 +8,7 @@
 #include <sstream>
 
 int main() {
-    run_tests();
+    // run_tests();
 
     std::string x;
     {

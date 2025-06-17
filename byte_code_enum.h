@@ -36,6 +36,11 @@ enum class Type : char {
     FLOAT2
 };
 
+enum UnaryOperatorType : char {
+    NOT,
+    NEGATE
+};
+
 enum BinaryOperatorType : char {
     ADD,
     SUBTRACT,

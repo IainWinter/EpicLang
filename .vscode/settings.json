@@ -81,6 +81,7 @@
         "xtree": "cpp",
         "xutility": "cpp",
         "string_view": "cpp",
-        "coroutine": "cpp"
+        "coroutine": "cpp",
+        "cstdarg": "cpp"
     }
 }
