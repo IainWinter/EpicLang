@@ -11,8 +11,6 @@ public:
     void push_bool(bool val);
     void push_int(int val);
     void push_float(const float& val);
-    void push_int2(const int2& val);
-    void push_float2(const float2& val);
 
     const Type& top_value_type(size_t item_index = 0) const;
 
@@ -20,8 +18,6 @@ public:
     const bool& top_as_bool(size_t item_index = 0) const;
     const int& top_as_int(size_t item_index = 0) const;
     const float& top_as_float(size_t item_index = 0) const;
-    const int2& top_as_int2(size_t item_index = 0) const;
-    const float2& top_as_float2(size_t item_index = 0) const;
 
     void pop(size_t item_count = 1);
 

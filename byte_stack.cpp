@@ -25,16 +25,6 @@ void ByteStack::push_float(const float& val) {
     write_type(Type::FLOAT);
 }
 
-void ByteStack::push_int2(const int2& val) {
-    write(val);
-    write_type(Type::INT2);
-}
-
-void ByteStack::push_float2(const float2& val) {
-    write(val);
-    write_type(Type::FLOAT2);
-}
-
 const Type& ByteStack::top_value_type(size_t item_index) const {
     size_t head = get_item_offset(item_index);
     return read<Type>(head);
@@ -63,16 +53,6 @@ const int& ByteStack::top_as_int(size_t item) const {
 const float& ByteStack::top_as_float(size_t item) const{
     size_t head = get_value_offset(item);
     return read<float>(head);
-}
-
-const int2& ByteStack::top_as_int2(size_t item) const{
-    size_t head = get_value_offset(item);
-    return read<int2>(head);
-}
-
-const float2& ByteStack::top_as_float2(size_t item) const{
-    size_t head = get_value_offset(item);
-    return read<float2>(head);
 }
 
 void ByteStack::pop(size_t item_count) {
@@ -127,14 +107,6 @@ size_t ByteStack::get_item_offset(size_t item_index) const {
                 head -= sizeof(float);
                 break;
             }
-            case Type::INT2: { 
-                head -= sizeof(int2);
-                break;
-            }
-            case Type::FLOAT2: { 
-                head -= sizeof(float2);
-                break;
-            }
         }
     }
 
@@ -187,18 +159,6 @@ void ByteStack::print() const {
                 float value = read<float>(head);
                 print_float(value);
                 head -= sizeof(float);
-                break;
-            }
-            case Type::INT2: { 
-                int2 value = read<int2>(head);
-                print_int2(value);
-                head -= sizeof(int2);
-                break;
-            }
-            case Type::FLOAT2: { 
-                float2 value = read<float2>(head);
-                print_float2(value);
-                head -= sizeof(float2);
                 break;
             }
         }

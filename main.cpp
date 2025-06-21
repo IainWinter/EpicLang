@@ -8,7 +8,7 @@
 #include <sstream>
 
 int main() {
-    // run_tests();
+    run_tests();
 
     std::string x;
     {
@@ -26,13 +26,16 @@ int main() {
 
     results.program.print();
 
-    // ByteCodeVm vm(results.program);
-    // ByteCodeVmDebugger debugger(vm);
+    ByteCodeVm vm(results.program);
+    vm.set_main_args({ { Type::INT, 5 } });
+    vm.print();
 
-    // while (vm.get_is_not_halted()) {
-    //     debugger.breakpoint_step();
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    // }
+    ByteCodeVmDebugger debugger(vm);
+
+    while (vm.get_is_not_halted()) {
+        debugger.breakpoint_step();
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
     
     return 0;
 }

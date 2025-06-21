@@ -27,11 +27,6 @@ struct Scope {
     std::vector<Identifier> identifiers;
 };
 
-struct FunctionInfo {
-    size_t code_index;
-    Type return_type;
-};
-
 class ByteCodeGenerator {
 public:
     // Operations
@@ -43,6 +38,8 @@ public:
     void patch(size_t code_index, ByteCodeOp&& replacement_operation);
 
     size_t get_code_index() const;
+
+    OpType get_last_op_type() const;
 
     // Scopes, variables, and functions
 
@@ -61,10 +58,10 @@ public:
     std::optional<Type> variable_get_type(const std::string& identifier) const;
     
     CompilationErrorType function_declare(Type return_type, const std::string& identifier, size_t argument_count);
-
-    std::optional<FunctionInfo> function_get_info(const std::string& identifier) const;
     
-    std::optional<FunctionInfo> function_get_current_info() const;
+    std::optional<Function> function_get_info(const std::string& identifier) const;
+    
+    std::optional<Function> function_get_current_info() const;
 
     // Error state
 

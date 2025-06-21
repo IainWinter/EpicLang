@@ -28,6 +28,7 @@ add_executable(SimpleLang
   main.cpp
   test.cpp
   binary_ops.cpp
+  unary_ops.cpp
   byte_stack.cpp
   byte_code_vm.cpp
   byte_code_vm_debugger.cpp

@@ -12,12 +12,17 @@ ByteCodeVm::ByteCodeVm(const Program& program)
     m_next_program_counter = m_program_counter;
 }
 
+void ByteCodeVm::set_main_args(std::initializer_list<std::pair<Type, TypeVariant>> args) {
+    for (auto arg : args) {
+        push_variant(arg.first, arg.second);
+    }
+}
+
 void ByteCodeVm::execute() {
     while (get_is_not_halted()) {
         execute_op();
     }
 }
-
 void ByteCodeVm::execute_op() {
     m_next_program_counter = m_program_counter + 1;
     execute_op_switch();
@@ -130,7 +135,28 @@ void ByteCodeVm::execute_op_switch() {
             break;
         }
 
-        // Math
+        // Unary
+
+        case OpType::NOT_BOOL: {
+            bool result = !m_stack.top_as_bool();
+            m_stack.pop();
+            m_stack.push_bool(result);
+            break;
+        }
+        case OpType::NEGATE_INT: {
+            int result = -m_stack.top_as_int();
+            m_stack.pop();
+            m_stack.push_int(result);
+            break;
+        }
+        case OpType::NEGATE_FLOAT: {
+            float result = -m_stack.top_as_float();
+            m_stack.pop();
+            m_stack.push_float(result);
+            break;
+        }
+
+        // Binary
 
         case OpType::ADD_INT: {
             int result = m_stack.top_as_int(1) + m_stack.top_as_int(0);
@@ -142,18 +168,6 @@ void ByteCodeVm::execute_op_switch() {
             float result = m_stack.top_as_float(1) + m_stack.top_as_float(0);
             m_stack.pop(2);
             m_stack.push_float(result);
-            break;
-        }
-        case OpType::ADD_INT2: {
-            int2 result = m_stack.top_as_int2(1) + m_stack.top_as_int2(0);
-            m_stack.pop(2);
-            m_stack.push_int2(result);
-            break;
-        }
-        case OpType::ADD_FLOAT2: {
-            float2 result = m_stack.top_as_float2(1) + m_stack.top_as_float2(0);
-            m_stack.pop(2);
-            m_stack.push_float2(result);
             break;
         }
         case OpType::SUBTRACT_INT: {
@@ -168,18 +182,6 @@ void ByteCodeVm::execute_op_switch() {
             m_stack.push_float(result);
             break;
         }
-        case OpType::SUBTRACT_INT2: {
-            int2 result = m_stack.top_as_int2(1) - m_stack.top_as_int2(0);
-            m_stack.pop(2);
-            m_stack.push_int2(result);
-            break;
-        }
-        case OpType::SUBTRACT_FLOAT2: {
-            float2 result = m_stack.top_as_float2(1) - m_stack.top_as_float2(0);
-            m_stack.pop(2);
-            m_stack.push_float2(result);
-            break;
-        }
         case OpType::MULTIPLY_INT: {
             int result = m_stack.top_as_int(1) * m_stack.top_as_int(0);
             m_stack.pop(2);
@@ -190,30 +192,6 @@ void ByteCodeVm::execute_op_switch() {
             float result = m_stack.top_as_float(1) * m_stack.top_as_float(0);
             m_stack.pop(2);
             m_stack.push_float(result);
-            break;
-        }
-        case OpType::MULTIPLY_INT2: {
-            int2 result = m_stack.top_as_int2(1) * m_stack.top_as_int2(0);
-            m_stack.pop(2);
-            m_stack.push_int2(result);
-            break;
-        }
-        case OpType::MULTIPLY_INT2_INT: {
-            int2 result = m_stack.top_as_int2(1) * m_stack.top_as_int(0);
-            m_stack.pop(2);
-            m_stack.push_int2(result);
-            break;
-        }
-        case OpType::MULTIPLY_FLOAT2: {
-            float2 result = m_stack.top_as_float2(1) * m_stack.top_as_float2(0);
-            m_stack.pop(2);
-            m_stack.push_float2(result);
-            break;
-        }
-        case OpType::MULTIPLY_FLOAT2_FLOAT: {
-            float2 result = m_stack.top_as_float2(1) * m_stack.top_as_float(0);
-            m_stack.pop(2);
-            m_stack.push_float2(result);
             break;
         }
         case OpType::DIVIDE_INT: {
@@ -228,37 +206,16 @@ void ByteCodeVm::execute_op_switch() {
             m_stack.push_float(result);
             break;
         }
-        case OpType::DIVIDE_INT2_INT: {
-            int2 result = m_stack.top_as_int2(1) / m_stack.top_as_int(0);
-            m_stack.pop(2);
-            m_stack.push_int2(result);
-            break;
-        }
-        case OpType::DIVIDE_INT2: {
-            int2 result = m_stack.top_as_int2(1) / m_stack.top_as_int2(0);
-            m_stack.pop(2);
-            m_stack.push_int2(result);
-            break;
-        }
-        case OpType::DIVIDE_FLOAT2: {
-            float2 result = m_stack.top_as_float2(1) / m_stack.top_as_float2(0);
-            m_stack.pop(2);
-            m_stack.push_float2(result);
-            break;
-        }
-        case OpType::DIVIDE_FLOAT2_FLOAT: {
-            float2 result = m_stack.top_as_float2(1) / m_stack.top_as_float(0);
-            m_stack.pop(2);
-            m_stack.push_float2(result);
-            break;
-        }
+
+        // Comparisons
+
         case OpType::EQUALS_STRING: {
             bool result = m_stack.top_as_string(1) == m_stack.top_as_string(0);
             m_stack.pop(2);
             m_stack.push_bool(result);
             break;
         }
-        case OpType::EQUALS_BOOl: {
+        case OpType::EQUALS_BOOL: {
             bool result = m_stack.top_as_bool(1) == m_stack.top_as_bool(0);
             m_stack.pop(2);
             m_stack.push_bool(result);
@@ -270,20 +227,8 @@ void ByteCodeVm::execute_op_switch() {
             m_stack.push_bool(result);
             break;
         }
-        case OpType::EQUALS_INT2: {
-            bool result = m_stack.top_as_int2(1) == m_stack.top_as_int2(0);
-            m_stack.pop(2);
-            m_stack.push_bool(result);
-            break;
-        }
         case OpType::EQUALS_FLOAT: {
             bool result = m_stack.top_as_float(1) == m_stack.top_as_float(0);
-            m_stack.pop(2);
-            m_stack.push_bool(result);
-            break;
-        }
-        case OpType::EQUALS_FLOAT2: {
-            bool result = m_stack.top_as_float2(1) == m_stack.top_as_float2(0);
             m_stack.pop(2);
             m_stack.push_bool(result);
             break;
@@ -294,7 +239,7 @@ void ByteCodeVm::execute_op_switch() {
             m_stack.push_bool(result);
             break;
         }
-        case OpType::NOT_EQUALS_BOOl: {
+        case OpType::NOT_EQUALS_BOOL: {
             bool result = m_stack.top_as_bool(1) != m_stack.top_as_bool(0);
             m_stack.pop(2);
             m_stack.push_bool(result);
@@ -306,20 +251,8 @@ void ByteCodeVm::execute_op_switch() {
             m_stack.push_bool(result);
             break;
         }
-        case OpType::NOT_EQUALS_INT2: {
-            bool result = m_stack.top_as_int2(1) != m_stack.top_as_int2(0);
-            m_stack.pop(2);
-            m_stack.push_bool(result);
-            break;
-        }
         case OpType::NOT_EQUALS_FLOAT: {
             bool result = m_stack.top_as_float(1) != m_stack.top_as_float(0);
-            m_stack.pop(2);
-            m_stack.push_bool(result);
-            break;
-        }
-        case OpType::NOT_EQUALS_FLOAT2: {                
-            bool result = m_stack.top_as_float2(1) != m_stack.top_as_float2(0);
             m_stack.pop(2);
             m_stack.push_bool(result);
             break;
@@ -392,16 +325,8 @@ void ByteCodeVm::push_variant(Type type, const TypeVariant& variant) {
             m_stack.push_int(std::get<int>(variant));
             break;
         }
-        case Type::INT2: {
-            m_stack.push_int2(std::get<int2>(variant));
-            break;
-        }
         case Type::FLOAT: {
             m_stack.push_float(std::get<float>(variant));
-            break;
-        }
-        case Type::FLOAT2: {
-            m_stack.push_float2(std::get<float2>(variant));
             break;
         }
         default: {
@@ -428,16 +353,8 @@ std::pair<Type, TypeVariant> ByteCodeVm::pop_variant() {
             value = m_stack.top_as_int();
             break;
         }
-        case Type::INT2: {
-            value = m_stack.top_as_int2();
-            break;
-        }
         case Type::FLOAT: {
             value = m_stack.top_as_float();
-            break;
-        }
-        case Type::FLOAT2: {
-            value = m_stack.top_as_float2();
             break;
         }
         default: {

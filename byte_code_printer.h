@@ -11,5 +11,3 @@ void print_string(std::string_view value);
 void print_bool(bool value);
 void print_int(int value);
 void print_float(float value);
-void print_int2(int2 value);
-void print_float2(float2 value);

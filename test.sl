@@ -1,5 +1,3 @@
-int g_w = 0;
-
 int main(int x) {
     int y = 5;
     {
@@ -11,7 +9,7 @@ int main(int x) {
     //}
 
     //y = lambda(x);
-    return y + g_w;
+    return y + 1;
 }
 
 int test(float x, float y, float z) {

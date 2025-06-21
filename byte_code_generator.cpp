@@ -18,6 +18,10 @@ size_t ByteCodeGenerator::get_code_index() const {
     return m_operations.size();
 }
 
+OpType ByteCodeGenerator::get_last_op_type() const {
+    return m_operations.back().type;
+}
+
 // Scopes, variables, and functions
 
 void ByteCodeGenerator::scope_push(ScopeType type) {
@@ -87,6 +91,10 @@ CompilationErrorType ByteCodeGenerator::variable_declare(Type type, const std::s
 }
 
 std::optional<Type> ByteCodeGenerator::variable_get_type(const std::string& identifier) const {
+    if (!scope_is_identifier_declared(identifier)) {
+        return std::nullopt;
+    }
+
     // First check globals to guard against no functions yet
     for (const Variable& var : m_global_variables) {
         if (var.name == identifier) {
@@ -121,27 +129,26 @@ CompilationErrorType ByteCodeGenerator::function_declare(Type return_type, const
     return CompilationErrorType::NONE;
 }
 
-std::optional<FunctionInfo> ByteCodeGenerator::function_get_info(const std::string& identifier) const {
+std::optional<Function> ByteCodeGenerator::function_get_info(const std::string& identifier) const {
     if (!scope_is_identifier_declared(identifier)) {
         return std::nullopt;
     }
 
     for (const Function& function : m_functions) {
         if (function.name == identifier) {
-            return FunctionInfo { function.code_index, function.return_type };
+            return function;
         }
     }
 
     return std::nullopt;
 }
 
-std::optional<FunctionInfo> ByteCodeGenerator::function_get_current_info() const {
-    if (m_functions.size() > 0) {
-        const Function& function = m_functions.back();
-        return FunctionInfo { function.code_index, function.return_type };    
+std::optional<Function> ByteCodeGenerator::function_get_current_info() const {
+    if (m_functions.size() == 0) {
+        return std::nullopt;
     }
     
-    return std::nullopt;
+    return m_functions.back();
 }
 
 // Errors
@@ -161,7 +168,7 @@ Program ByteCodeGenerator::get_program() const {
     program.operations = m_operations;
     program.functions = m_functions;
 
-    std::optional<FunctionInfo> main_function = function_get_info("main");
+    std::optional<Function> main_function = function_get_info("main");
 
     if (main_function.has_value()) {
         program.main_code_index = main_function.value().code_index;

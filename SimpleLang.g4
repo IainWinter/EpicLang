@@ -1,7 +1,7 @@
 grammar SimpleLang;
 
 program
-    : (declarationFunction | statementVariableDeclaration)* EOF
+    : (declarationFunction)* EOF
     ;
 
 declarationFunction

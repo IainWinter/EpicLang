@@ -5,6 +5,7 @@
 #include "program.h"
 
 #include <unordered_map>
+#include <initializer_list>
 
 struct ByteCodeVmState {
     ByteStack stack;
@@ -16,6 +17,8 @@ struct ByteCodeVmState {
 class ByteCodeVm {
 public:
     ByteCodeVm(const Program& program);
+
+    void set_main_args(std::initializer_list<std::pair<Type, TypeVariant>> args);
 
     void execute();
     

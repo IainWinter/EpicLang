@@ -5,7 +5,7 @@
 #include <variant>
 #include <string>
 
-using TypeVariant = std::variant<std::string, bool, int, int2, float, float2>;
+using TypeVariant = std::variant<std::string, bool, int, float>;
 
 struct ByteCodePushLiteralOp {
     Type type;
@@ -50,14 +50,6 @@ struct ByteCodeJumpOp {
     }
 };
 
-struct ByteCodeBinaryOp {
-    Type result_type;
-
-    bool operator==(const ByteCodeBinaryOp& other) const {
-        return result_type == other.result_type;
-    }
-};
-
 struct ByteCodeOp {
     OpType type;
     std::variant<
@@ -65,7 +57,6 @@ struct ByteCodeOp {
         ByteCodePushLiteralOp, 
         ByteCodePushVariableOp, 
         ByteCodeStoreVariableOp,
-        ByteCodeBinaryOp,
         ByteCodeCallFunctionOp,
         ByteCodeJumpOp
     > operand;

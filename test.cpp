@@ -184,7 +184,7 @@ TEST(if_statement) {
         { OpType::STORE_VARIABLE, ByteCodeStoreVariableOp{ Type::INT, "x" } },
         { OpType::PUSH_VARIABLE, ByteCodePushVariableOp{ Type::INT, "x" } },
         { OpType::PUSH_LITERAL, ByteCodePushLiteralOp{ Type::INT, 0 } },
-        { OpType::EQUALS_INT, ByteCodeBinaryOp{ Type::BOOL } },
+        { OpType::EQUALS_INT, { } },
         { OpType::JUMP_IF_FALSE, ByteCodeJumpOp{ 8 } },
         { OpType::PUSH_LITERAL, ByteCodePushLiteralOp{ Type::INT, 1 } },
         { OpType::STORE_VARIABLE, ByteCodeStoreVariableOp{ Type::INT, "x" } },
@@ -238,9 +238,37 @@ TEST(statement_expression_cleans_up_stack) {
     assert(test.execution.stack.size() == 0);
 }
 
+TEST(function_needs_correct_number_of_args) {
+    TestResults test = test_run(
+        "void test(int x) {"
+        "}"
+        ""
+        "void main() {"
+        "   test();"
+        "   test(1, 2);"
+        "}"
+    );
+
+    assert(test.compilation.error.type == CompilationErrorType::FUNCTION_CALLED_WITH_WRONG_NUMBER_OF_ARGS);
+}
+
+TEST(function_needs_correct_type_of_args) {
+    TestResults test = test_run(
+        "void test(int x) {"
+        "}"
+        ""
+        "void main() {"
+        "   test(1.1);"
+        "}"
+    );
+
+    assert(test.compilation.error.type == CompilationErrorType::TYPE_MISMATCH);
+}
+
 void run_tests() {
     for (const Test& test : tests) {
         printf("Test %s\n", test.name.data());
         test.func();
+        printf("Passed!\n\n");
     }
 }

@@ -5,9 +5,7 @@ static std::string_view s_type_names[] = {
     "STRING",
     "BOOL",
     "INT",
-    "FLOAT",
-    "INT2",
-    "FLOAT2"
+    "FLOAT"
 };
 
 static std::string_view s_op_type_names[] = {
@@ -21,38 +19,25 @@ static std::string_view s_op_type_names[] = {
     "RETURN",
     "JUMP",
     "JUMP_IF_FALSE",
+    "NOT_BOOL",
+    "NEGATE_INT",
+    "NEGATE_FLOAT",
     "ADD_INT",
     "ADD_FLOAT",
-    "ADD_INT2",
-    "ADD_FLOAT2",
     "SUBTRACT_INT",
     "SUBTRACT_FLOAT",
-    "SUBTRACT_INT2",
-    "SUBTRACT_FLOAT2",
     "MULTIPLY_INT",
     "MULTIPLY_FLOAT",
-    "MULTIPLY_INT2",
-    "MULTIPLY_INT2_INT",
-    "MULTIPLY_FLOAT2",
-    "MULTIPLY_FLOAT2_FLOAT",
     "DIVIDE_INT",
     "DIVIDE_FLOAT",
-    "DIVIDE_INT2_INT",
-    "DIVIDE_INT2",
-    "DIVIDE_FLOAT2",
-    "DIVIDE_FLOAT2_FLOAT",
     "EQUALS_STRING",
-    "EQUALS_BOOl",
+    "EQUALS_BOOL",
     "EQUALS_INT",
-    "EQUALS_INT2",
     "EQUALS_FLOAT",
-    "EQUALS_FLOAT2",
     "NOT_EQUALS_STRING",
-    "NOT_EQUALS_BOOl",
+    "NOT_EQUALS_BOOL",
     "NOT_EQUALS_INT",
-    "NOT_EQUALS_INT2",
     "NOT_EQUALS_FLOAT",
-    "NOT_EQUALS_FLOAT2",
     "LESS_THAN_INT",
     "LESS_THAN_FLOAT",
     "GREATER_THAN_INT",
@@ -60,7 +45,7 @@ static std::string_view s_op_type_names[] = {
     "LESS_THAN_EQUALS_INT",
     "LESS_THAN_EQUALS_FLOAT",
     "GREATER_THAN_EQUALS_INT",
-    "GREATER_THAN_EQUALS_FLOAT",
+    "GREATER_THAN_EQUALS_FLOAT"
 };
 
 std::string_view s_compiler_error_type_names[] = {
@@ -68,9 +53,10 @@ std::string_view s_compiler_error_type_names[] = {
     "PARSE_ERROR",
     "TYPE_MISMATCH",
     "NON_VOID_FUNCTION_MISSING_RETURN",
+    "FUNCTION_CALLED_WITH_WRONG_NUMBER_OF_ARGS",
     "IDENTIFIED_NOT_DECLARED",
     "IDENTIFIED_ALREADY_DECLARED",
-    "MATH_OPERATION_ON_STRING",
+    "MATH_OPERATION_ON_STRING"
 };
 
 std::string_view type_to_string(Type type) {
@@ -102,16 +88,8 @@ Type type_from_string(std::string_view name) {
         return Type::INT;
     }
 
-    if (name == "ivec2") {
-        return Type::INT2;
-    }
-
     if (name == "float") {
         return Type::FLOAT;
-    }
-
-    if (name == "vec2") {
-        return Type::FLOAT2;
     }
 
     throw 0;

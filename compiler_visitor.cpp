@@ -4,46 +4,15 @@
 #include "byte_code_generator.h"
 #include "byte_code_vm.h"
 #include "binary_ops.h" 
+#include "unary_ops.h" 
 
 #include "SimpleLangVisitor.h"
 
-#include <cstdio>
-#include <cstdarg>
-
-class StackLogger {
-public:
-    StackLogger() : m_indent(0) {}
-
-    void push() {
-        m_indent++;
-    }
-
-    void pop() {
-        if (m_indent > 0) {
-            m_indent--;
-        }
-    }
-
-    void operator()(const char* format, ...) const {
-        for (int i = 0; i < m_indent; ++i) {
-            printf("  ");
-        }
-
-        va_list args;
-        va_start(args, format);
-        vprintf(format, args);
-        va_end(args);
-        printf("\n");
-    }
-
-private:
-    int m_indent;
-};
+#include "stack_logger.h"
 
 class BytecodeEmitter : public SimpleLangVisitor {
 public:
     ByteCodeGenerator gen;
-    bool m_next_block_push_scope = true;
     StackLogger logger;
 
     void panic(const antlr4::ParserRuleContext* context, CompilationErrorType type, CompilationErrorVariant info) {
@@ -73,6 +42,14 @@ public:
         return std::any_cast<Type>(visit(context));
     }
 
+    std::vector<Type> visit_expression_list(SimpleLangParser::ExpressionListContext* context) {
+        if (!context) {
+            return {};
+        }
+
+        return std::any_cast<std::vector<Type>>(visit(context));
+    }
+
     Type visit_literal(SimpleLangParser::LiteralContext* context) {
         return std::any_cast<Type>(visit(context));
     }
@@ -86,7 +63,15 @@ public:
     }
 
     std::vector<Variable> visit_argument_list(SimpleLangParser::ArgumentListContext* context) {
+        if (!context) {
+            return {};
+        }
+
         return std::any_cast<std::vector<Variable>>(visit(context));
+    }
+    
+    void emit(OpType op) {
+        gen.emit(ByteCodeOp{ op, {} });
     }
 
     void emit(ByteCodeOp&& op) {
@@ -94,8 +79,21 @@ public:
     }
 
     Type emit_unary_op(const antlr4::ParserRuleContext* context, Type right_type, UnaryOperatorType op) {
-        // todo:
-        return right_type;
+        CompilationErrorType err = map_unary_op_validate(right_type, op);
+        if (err != CompilationErrorType::NONE) {
+            panic(context, err, {});
+        }
+
+        std::optional<UnaryOpMapOut> out = map_unary_op(right_type, op);
+        if (!out.has_value()) {
+            panic(context, CompilationErrorType::TYPE_MISMATCH, {});
+        }
+
+        UnaryOpMapOut value = out.value();
+        
+        emit(value.code);
+
+        return value.result_type;
     }
 
     Type emit_binary_op(const antlr4::ParserRuleContext* context, Type left_type, Type right_type, BinaryOperatorType op) {
@@ -104,13 +102,14 @@ public:
             panic(context, err, {});
         }
 
-        auto out = map_binary_op(left_type, right_type, op);
+        std::optional<BinaryOpMapOut> out = map_binary_op(left_type, right_type, op);
         if (!out.has_value()) {
             panic(context, CompilationErrorType::TYPE_MISMATCH, {});
         }
 
         BinaryOpMapOut value = out.value();
-        emit({value.code, ByteCodeBinaryOp { value.result_type } });
+
+        emit(value.code);
 
         return value.result_type;
     }
@@ -156,8 +155,8 @@ public:
             }
 
             emit({
-                OpType::PUSH_VARIABLE,
-                ByteCodePushVariableOp {
+                OpType::STORE_VARIABLE,
+                ByteCodeStoreVariableOp {
                     variable.type,
                     variable.name
                 }
@@ -169,6 +168,18 @@ public:
         }
 
         visit(context->block());
+
+        if (   gen.get_code_index() == 0 
+            || gen.get_last_op_type() != OpType::RETURN) 
+        {
+            if (return_type == Type::VOID) {
+                emit(OpType::RETURN);
+            }
+
+            else {
+                panic(context, CompilationErrorType::NON_VOID_FUNCTION_MISSING_RETURN, {});
+            }
+        }
 
         gen.scope_pop();
 
@@ -247,19 +258,20 @@ public:
         logger("statement variable declaration %s", context->getText().c_str());
         logger.push();
 
+        Type expression_type = visit_expression(context->expression());
+
         Type type = visit_type(context->type());
+
+        if (type != expression_type) {
+            panic(context, CompilationErrorType::TYPE_MISMATCH, {});
+        }
+
         std::string identifier = context->ID()->getText();
 
         CompilationErrorType err = gen.variable_declare(type, identifier);
 
         if (err != CompilationErrorType::NONE) {
             panic(context, err, {});
-        }
-
-        Type expression_type = visit_expression(context->expression());
-
-        if (type != expression_type) {
-            panic(context, CompilationErrorType::TYPE_MISMATCH, {});
         }
 
         emit({
@@ -310,7 +322,7 @@ public:
             type = visit_expression(context->expression());
         }
 
-        std::optional<FunctionInfo> function = gen.function_get_current_info();
+        std::optional<Function> function = gen.function_get_current_info();
         
         if (!function.has_value()) {
             panic(context, CompilationErrorType::PARSE_ERROR, {});
@@ -395,9 +407,16 @@ public:
     std::any visitExpressionList(SimpleLangParser::ExpressionListContext *context) {
         logger("expression list %s", context->getText().c_str());
         logger.push();
-        std::any out = visitChildren(context); 
+
+        std::vector<Type> types;
+
+        for (SimpleLangParser::ExpressionContext* expression : context->expression()) {
+            types.push_back(visit_expression(expression));
+        }
+
         logger.pop();
-        return out;
+        
+        return types;
     }
 
     std::any visitExpression(SimpleLangParser::ExpressionContext *context) {
@@ -488,14 +507,25 @@ public:
             panic(context, CompilationErrorType::IDENTIFIED_NOT_DECLARED, {});
         }
 
-        if (auto expressionList = context->expressionList()) {
-            visit(expressionList);
-        }
-
-        std::optional<FunctionInfo> function = gen.function_get_info(identifier);
+        std::optional<Function> function = gen.function_get_info(identifier);
 
         if (!function.has_value()) {
             panic(context, CompilationErrorType::PARSE_ERROR, {});
+        }
+
+        std::vector<Type> expression_types = visit_expression_list(context->expressionList());
+
+        if (function.value().argument_count != expression_types.size()) {
+            panic(context, CompilationErrorType::FUNCTION_CALLED_WITH_WRONG_NUMBER_OF_ARGS, {});
+        }
+
+        for (size_t i = 0; i < expression_types.size(); i++) {
+            Type expression_type = expression_types.at(i);
+            Type argument_type = function.value().local_variables.at(i).type;
+
+            if (expression_type != argument_type) {
+                panic(context, CompilationErrorType::TYPE_MISMATCH, {});
+            }
         }
 
         emit({

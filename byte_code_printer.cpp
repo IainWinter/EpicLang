@@ -62,12 +62,6 @@ void print_type_variant(Type type, const TypeVariant& value) {
         case Type::FLOAT:
             print_float(std::get<float>(value));
             break;
-        case Type::INT2:
-            print_int2(std::get<int2>(value));
-            break;
-        case Type::FLOAT2:
-            print_float2(std::get<float2>(value));
-            break;
     }
 }
 
@@ -89,12 +83,4 @@ void print_int(int value) {
 
 void print_float(float value) {
     printf("%f", value);
-}
-
-void print_int2(int2 value) {
-    printf("(%d, %d)", value.x, value.y);
-}
-
-void print_float2(float2 value) {
-    printf("(%f, %f)", value.x, value.y);
 }
