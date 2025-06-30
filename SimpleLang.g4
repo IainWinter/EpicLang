@@ -1,10 +1,22 @@
 grammar SimpleLang;
 
 program
-    : (declarationFunction)* EOF
+    : stateBlock? functionDeclaration* EOF
     ;
 
-declarationFunction
+stateBlock
+    : 'state' '{' statementVariableDeclaration* '}'
+    ;
+
+typeDeclaration
+    : 'struct' TYPE_ID '{' typeVariableDeclaration* '}'
+    ;
+
+typeVariableDeclaration
+    : type ID ';'
+    ;
+
+functionDeclaration
     : type ID '(' argumentList? ')' block
     ;
 
@@ -24,6 +36,7 @@ statement
     : block
     | statementVariableDeclaration
     | statementVariableAssignment
+    | statementTypeVariableAssignment
     | statementReturn
     | statementIf
     | statementWhile
@@ -36,6 +49,10 @@ statementVariableDeclaration
 
 statementVariableAssignment
     : ID '=' expression ';'
+    ;
+
+statementTypeVariableAssignment
+    : ID '.' ID '=' expression ';'
     ;
 
 statementReturn
@@ -65,12 +82,22 @@ expression
     | op=('!' | '-') expression
     | '(' expression ')'
     | expressionCallFunction
+    | expressionTypeVariableAccess
+    | expressionTypeInitializerList
     | ID
     | literal
     ;
 
 expressionCallFunction
     : ID '(' expressionList? ')'
+    ;
+
+expressionTypeVariableAccess
+    : ID '.' ID
+    ;
+
+expressionTypeInitializerList
+    : '{' (statementVariableAssignment)* '}'
     ;
 
 literal
@@ -85,16 +112,16 @@ type
     | 'string'
     | 'bool' 
     | 'int'   
-    | 'float' 
-    | 'ivec2'
-    | 'vec2'
+    | 'float'
+    | TYPE_ID
     ;
 
-FLOAT  : [0-9]+ '.' [0-9]*;
-INT    : [0-9]+;
-BOOL   : 'true'|'false';
-STRING : '"' (~["\r\n])* '"' ;
-ID   : [a-z_][a-z0-9_]*;
+FLOAT   : [0-9]+ '.' [0-9]*;
+INT     : [0-9]+;
+BOOL    : 'true'|'false';
+STRING  : '"' (~["\r\n])* '"' ;
+ID      : [a-z_][a-z0-9_]*;
+TYPE_ID : [A-Z_][a-zA-Z0-9]*;
 
 WHITESPACE : [ \t\r\n]+ -> skip;
 COMMENT:   '//' ~[\r\n]* -> skip;

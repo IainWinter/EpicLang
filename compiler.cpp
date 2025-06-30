@@ -6,7 +6,7 @@
 #include "SimpleLangLexer.h"
 #include "SimpleLangParser.h"
 
-CompilationResults compile(std::string_view text) {
+CompilationResults compile(std::string_view text, const std::vector<ExternalFunction>& external_functions) {
     antlr4::ANTLRInputStream input(text);
     SimpleLangLexer lexer(&input);
     antlr4::CommonTokenStream tokens(&lexer);
@@ -24,7 +24,7 @@ CompilationResults compile(std::string_view text) {
 
     printf("\nVisitor Trace:\n");
 
-    CompilationResults result = generate_byte_code(tree);
+    CompilationResults result = generate_byte_code(tree, external_functions);
     
     if (result.error.type != CompilationErrorType::NONE) {
         CompilationError error = result.error;

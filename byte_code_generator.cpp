@@ -2,6 +2,14 @@
 
 // Operations
 
+ByteCodeGenerator::ByteCodeGenerator() {
+    scope_push(ScopeType::GLOBAL);
+}
+
+ByteCodeGenerator::~ByteCodeGenerator() {
+    scope_pop();
+}
+
 void ByteCodeGenerator::emit(ByteCodeOp&& operation) {
     m_operations.emplace_back(std::move(operation));
 }
@@ -38,12 +46,22 @@ CompilationErrorType ByteCodeGenerator::scope_pop() {
     return CompilationErrorType::NONE;
 }
 
-CompilationErrorType ByteCodeGenerator::scope_declare_identifier(IdentifierType type, const std::string& name) {
+CompilationErrorType ByteCodeGenerator::scope_declare_identifier(IdentifierType type, const std::string& name, bool external) {
     if (scope_is_identifier_declared(name)) {
         return CompilationErrorType::IDENTIFIED_ALREADY_DECLARED;
     }
 
-    m_scopes.back().identifiers.push_back({type, name});
+    m_scopes.back().identifiers.push_back({type, name, external});
+
+    return CompilationErrorType::NONE;
+}
+
+CompilationErrorType ByteCodeGenerator::scope_declare_identifier_global(IdentifierType type, const std::string& name, bool external) {
+    if (scope_is_identifier_declared(name)) {
+        return CompilationErrorType::IDENTIFIED_ALREADY_DECLARED;
+    }
+
+    m_scopes.front().identifiers.push_back({type, name, external});
 
     return CompilationErrorType::NONE;
 }
@@ -60,12 +78,24 @@ bool ByteCodeGenerator::scope_is_identifier_declared(const std::string& name) co
     return false;
 }
 
+std::optional<Identifier> ByteCodeGenerator::scope_get_identifier(const std::string& name) const {
+    for (const Scope& scope : m_scopes) {
+        for (const Identifier& identifier : scope.identifiers) {
+            if (identifier.name == name) {
+                return identifier;
+            }
+        }
+    }
+
+    return std::nullopt;
+}
+
 ScopeType ByteCodeGenerator::scope_get_current_type() const {
     return m_scopes.back().type;
 }
 
 CompilationErrorType ByteCodeGenerator::variable_declare(Type type, const std::string& identifier) {
-    CompilationErrorType err = scope_declare_identifier(IdentifierType::VARIABLE, identifier);
+    CompilationErrorType err = scope_declare_identifier(IdentifierType::VARIABLE, identifier, false);
 
     if (err != CompilationErrorType::NONE) {
         return err;
@@ -112,7 +142,7 @@ std::optional<Type> ByteCodeGenerator::variable_get_type(const std::string& iden
 }
 
 CompilationErrorType ByteCodeGenerator::function_declare(Type return_type, const std::string& identifier, size_t argument_count) {
-    CompilationErrorType err = scope_declare_identifier(IdentifierType::FUNCTION, identifier);
+    CompilationErrorType err = scope_declare_identifier(IdentifierType::FUNCTION, identifier, false);
 
     if (err != CompilationErrorType::NONE) {
         return err;
@@ -129,26 +159,74 @@ CompilationErrorType ByteCodeGenerator::function_declare(Type return_type, const
     return CompilationErrorType::NONE;
 }
 
-std::optional<Function> ByteCodeGenerator::function_get_info(const std::string& identifier) const {
-    if (!scope_is_identifier_declared(identifier)) {
+CompilationErrorType ByteCodeGenerator::function_declare_external(const ExternalFunction& function) {
+    CompilationErrorType err = scope_declare_identifier_global(IdentifierType::FUNCTION, function.name, true);
+
+    if (err != CompilationErrorType::NONE) {
+        return err;
+    }
+
+    m_external_functions.push_back(function);
+
+    return CompilationErrorType::NONE;
+}
+
+std::optional<FunctionInfo> ByteCodeGenerator::function_get_info(const std::string& identifier) const {
+    std::optional<Identifier> id = scope_get_identifier(identifier);
+    
+    if (!id.has_value()) {
         return std::nullopt;
     }
 
-    for (const Function& function : m_functions) {
-        if (function.name == identifier) {
-            return function;
+    FunctionInfo info;
+
+    if (id.value().external) {
+        for (size_t i = 0; i < m_external_functions.size(); i++) {
+            const ExternalFunction& function = m_external_functions.at(i);
+
+            if (function.name != identifier) {
+                continue;
+            }
+
+            info.is_external = true;
+            info.code_index_or_function_index = i;
+            info.return_type = function.return_type;
+
+            for (const Variable& variable : function.arguments) {
+                info.arguments.push_back(variable.type);
+            }
+
+            break;
         }
     }
 
-    return std::nullopt;
+    else {
+        for (const Function& function : m_functions) {
+            if (function.name != identifier) {
+                continue;
+            }
+
+            info.is_external = false;
+            info.code_index_or_function_index = function.code_index;
+            info.return_type = function.return_type;
+
+            for (size_t i = 0; i < function.argument_count; i++) {
+                info.arguments.push_back(function.local_variables.at(i).type);
+            }
+
+            break;
+        }
+    }
+
+    return info;
 }
 
-std::optional<Function> ByteCodeGenerator::function_get_current_info() const {
+std::optional<Type> ByteCodeGenerator::function_get_current_return_type() const {
     if (m_functions.size() == 0) {
         return std::nullopt;
     }
     
-    return m_functions.back();
+    return m_functions.back().return_type;
 }
 
 // Errors
@@ -167,11 +245,12 @@ Program ByteCodeGenerator::get_program() const {
     Program program;
     program.operations = m_operations;
     program.functions = m_functions;
+    program.external_functions = m_external_functions;
 
-    std::optional<Function> main_function = function_get_info("main");
+    std::optional<FunctionInfo> main_function = function_get_info("main");
 
     if (main_function.has_value()) {
-        program.main_code_index = main_function.value().code_index;
+        program.main_code_index = main_function.value().code_index_or_function_index;
     }
 
     return program;

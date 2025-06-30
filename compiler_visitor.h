@@ -4,4 +4,4 @@
 
 #include "antlr4-runtime.h"
 
-CompilationResults generate_byte_code(antlr4::tree::ParseTree* tree);
+CompilationResults generate_byte_code(antlr4::tree::ParseTree* tree, const std::vector<ExternalFunction>& external_functions);

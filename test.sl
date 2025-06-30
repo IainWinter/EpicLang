@@ -1,26 +1,29 @@
-int main(int x) {
-    int y = 5;
-    {
-        int z = x + y;
+struct Player {
+    int x;
+    int y;
+    int z;
+}
+
+Player make_player() {
+    return Player {
+        x = 0;
+        y = 0;
+        z = 0;
+    };
+}
+
+void main(int x) {
+    Player p = make_player();
+    p.x = 1;
+
+    p = Player {
+        x = 0;
+        y = 0;
+        z = 0;
+    };
+
+    while (x < 10) {
+        print(to_string(x));
+        x = x + 1;
     }
-
-    //int lambda(int z) {
-    //    return y + z;
-    //}
-
-    //y = lambda(x);
-    return y + 1;
 }
-
-int test(float x, float y, float z) {
-    return 234;
-}
-
-float test2(float x, float y, float z) {
-    int x_ = 0;
-    int y_ = 0;
-    int z_ = 0;
-    return x + y + z;
-}
-
-//int x = main(5);

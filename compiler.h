@@ -4,4 +4,4 @@
 
 #include <string_view>
 
-CompilationResults compile(std::string_view text);
+CompilationResults compile(std::string_view text, const std::vector<ExternalFunction>& external_functions);

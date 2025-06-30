@@ -15,31 +15,31 @@ void print_byte_code(const ByteCodeOp& op) {
         case OpType::PUSH_VARIABLE: {
             const auto& operand = std::get<ByteCodePushVariableOp>(op.operand);
             printf("%s %s", type_to_string(operand.type).data(), operand.identifier.c_str());
-
             break;
         }
         case OpType::STORE_VARIABLE: {
             const auto& operand = std::get<ByteCodeStoreVariableOp>(op.operand);
             printf("%s %s", type_to_string(operand.type).data(), operand.identifier.c_str());
-
             break;
         }
         case OpType::CALL_FUNCTION: {
             const auto& operand = std::get<ByteCodeCallFunctionOp>(op.operand);
             printf("%zd", operand.code_index);
-
+            break;
+        }
+        case OpType::CALL_FUNCTION_EXTERNAL: {
+            const auto& operand = std::get<ByteCodeCallFunctionOp>(op.operand);
+            printf("%zd", operand.code_index);
             break;
         }
         case OpType::JUMP: {
             const auto& operand = std::get<ByteCodeJumpOp>(op.operand);
             printf("%zd", operand.code_index);
-
             break;
         }
         case OpType::JUMP_IF_FALSE: {
             const auto& operand = std::get<ByteCodeJumpOp>(op.operand);
             printf("%zd", operand.code_index);
-
             break;
         }
     }

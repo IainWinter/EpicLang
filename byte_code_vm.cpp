@@ -12,7 +12,7 @@ ByteCodeVm::ByteCodeVm(const Program& program)
     m_next_program_counter = m_program_counter;
 }
 
-void ByteCodeVm::set_main_args(std::initializer_list<std::pair<Type, TypeVariant>> args) {
+void ByteCodeVm::set_main_args(const std::vector<std::pair<Type, TypeVariant>>& args) {
     for (auto arg : args) {
         push_variant(arg.first, arg.second);
     }
@@ -27,6 +27,39 @@ void ByteCodeVm::execute_op() {
     m_next_program_counter = m_program_counter + 1;
     execute_op_switch();
     m_program_counter = m_next_program_counter;
+}
+
+void ByteCodeVm::halt() {
+    m_program_counter = m_program.operations.size();
+    m_next_program_counter = m_program.operations.size();
+}
+
+void ByteCodeVm::call_function(const std::string& identifier, const const std::vector<std::pair<Type, TypeVariant>>& args) {
+    auto index = m_program.find_function(identifier);
+    
+    if (!index.has_value()) {
+        halt();
+    }
+
+    for (const auto& [type, arg] : args) {
+        push_variant(type, arg);
+    }
+
+    switch (index.value().type) {
+        case FunctionType::SCRIPT: {
+            const Function& function = m_program.functions.at(index.value().function_index);
+            execute_op_call_function(function.code_index);
+            break;
+        }
+        case FunctionType::EXTERNAL: {
+            execute_op_call_external_function(index.value().function_index);
+            break;
+        }
+        default: {
+            halt();
+            break;
+        }
+    }
 }
 
 void ByteCodeVm::print() const {
@@ -99,9 +132,13 @@ void ByteCodeVm::execute_op_switch() {
 
         case OpType::CALL_FUNCTION: {
             const ByteCodeCallFunctionOp& operand = std::get<ByteCodeCallFunctionOp>(op.operand);
-            m_call_stack.push_back(m_program_counter);
-            m_next_program_counter = operand.code_index;
-            // need to push args
+            execute_op_call_function(operand.code_index);
+            break;
+        }
+
+        case OpType::CALL_FUNCTION_EXTERNAL: {
+            const ByteCodeCallFunctionOp& operand = std::get<ByteCodeCallFunctionOp>(op.operand);
+            execute_op_call_external_function(operand.code_index);
             break;
         }
 
@@ -308,6 +345,30 @@ void ByteCodeVm::execute_op_switch() {
         default: {
             exit(1);
         }
+    }
+}
+
+void ByteCodeVm::execute_op_call_function(size_t code_index) {
+    m_call_stack.push_back(m_program_counter);
+    m_next_program_counter = code_index;
+}
+
+void ByteCodeVm::execute_op_call_external_function(size_t function_index) {
+    const ExternalFunction& function = m_program.external_functions.at(function_index);
+
+    std::vector<TypeVariant> args;
+    for (size_t i = 0; i < function.arguments.size(); i++) {
+        auto [value_type, value] = pop_variant();
+        args.push_back(value);
+    }
+
+    if (function.return_type == Type::VOID) {
+        function.proc(args);
+    }
+
+    else {
+        TypeVariant result =  function.proc(args);
+        push_variant(function.return_type, result);
     }
 }
 

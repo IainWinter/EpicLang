@@ -1,11 +1,13 @@
 #pragma once
 
-enum class Type : char {
+enum class BuiltinType : char {
     VOID,    // only for functions
     STRING,
     BOOL,
     INT,
-    FLOAT
+    FLOAT,
+    OBJECT,
+    OBJECT_POINTER
 };
 
 enum UnaryOperatorType : char {
@@ -39,6 +41,8 @@ enum class OpType {
     STORE_VARIABLE,
 
     CALL_FUNCTION,
+    CALL_FUNCTION_EXTERNAL,
+    
     RETURN,
 
     JUMP,

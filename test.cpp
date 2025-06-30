@@ -11,7 +11,7 @@ struct TestResults {
 };
 
 TestResults test_run(std::string_view text) {
-    CompilationResults compilation = compile(text);
+    CompilationResults compilation = compile(text, {});
 
     if (compilation.error.type != CompilationErrorType::NONE) {
         return { compilation, {} };
@@ -263,6 +263,15 @@ TEST(function_needs_correct_type_of_args) {
     );
 
     assert(test.compilation.error.type == CompilationErrorType::TYPE_MISMATCH);
+}
+
+TEST(global_state_block_defines_global_identifier) {
+    TestResults test = test_run(
+        "state { int x = 0; }"
+        "void main(int x) {}"
+    );
+
+    assert(test.compilation.error.type == CompilationErrorType::IDENTIFIED_ALREADY_DECLARED);
 }
 
 void run_tests() {

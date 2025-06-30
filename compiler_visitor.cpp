@@ -118,20 +118,57 @@ public:
 
     // Top level program
 
-    std::any visitProgram(SimpleLangParser::ProgramContext *context) {
+    std::any visitProgram(SimpleLangParser::ProgramContext* context) {
         logger("program %s", context->getText().c_str());
         logger.push();
-        gen.scope_push(ScopeType::GLOBAL);
+        // gen.scope_push(ScopeType::GLOBAL);
         visitChildren(context);
         Program program = gen.get_program();
-        gen.scope_pop();
+        // gen.scope_pop();
         logger.pop();
         return program;
     }
 
+    // State
+
+    std::any visitStateBlock(SimpleLangParser::StateBlockContext* context) {
+        logger("state block %s", context->getText().c_str());
+        logger.push();
+        
+        for (auto decl : context->statementVariableDeclaration()) {
+            visit(decl);
+        }
+
+        logger.pop();
+
+        return nullptr;
+    }
+
+    // Types
+
+    std::any visitTypeDeclaration(SimpleLangParser::TypeDeclarationContext* context) {
+
+    }
+
+    std::any SimpleLangVisitor::visitTypeVariableDeclaration(SimpleLangParser::TypeVariableDeclarationContext* context) {
+
+    }
+
+    std::any SimpleLangVisitor::visitStatementTypeVariableAssignment(SimpleLangParser::StatementTypeVariableAssignmentContext* context) {
+
+    }
+
+    std::any SimpleLangVisitor::visitExpressionTypeVariableAccess(SimpleLangParser::ExpressionTypeVariableAccessContext* context) {
+
+    }
+
+    std::any SimpleLangVisitor::visitExpressionTypeInitializerList(SimpleLangParser::ExpressionTypeInitializerListContext* context) {
+
+    }
+
     // Functions
 
-    std::any visitDeclarationFunction(SimpleLangParser::DeclarationFunctionContext *context) {
+    std::any visitFunctionDeclaration(SimpleLangParser::FunctionDeclarationContext* context) {
         logger("declaration function %s", context->getText().c_str());
         logger.push();
 
@@ -151,7 +188,7 @@ public:
             err = gen.variable_declare(variable.type, variable.name);
             
             if (err != CompilationErrorType::NONE) {
-                return err;
+                panic(context, err, {});
             }
 
             emit({
@@ -188,7 +225,7 @@ public:
         return nullptr;
     }
 
-    std::any visitArgumentList(SimpleLangParser::ArgumentListContext *context) {
+    std::any visitArgumentList(SimpleLangParser::ArgumentListContext* context) {
         logger("argument list %s", context->getText().c_str());
         logger.push();
 
@@ -206,7 +243,7 @@ public:
         return arguments;
     }
 
-    std::any visitArgument(SimpleLangParser::ArgumentContext *context) {
+    std::any visitArgument(SimpleLangParser::ArgumentContext* context) {
         logger("argument %s", context->getText().c_str());
         logger.push();
 
@@ -218,7 +255,7 @@ public:
         return Variable { type, identifier };
     }
 
-    std::any visitBlock(SimpleLangParser::BlockContext *context) {
+    std::any visitBlock(SimpleLangParser::BlockContext* context) {
         logger("block %s", context->getText().c_str());
         logger.push();
         
@@ -233,7 +270,7 @@ public:
 
     // Statement
 
-    std::any visitStatement(SimpleLangParser::StatementContext *context) {
+    std::any visitStatement(SimpleLangParser::StatementContext* context) {
         logger("statement %s", context->getText().c_str());
         logger.push();
         std::any out = visitChildren(context); 
@@ -241,7 +278,7 @@ public:
         return out;
     }
 
-    std::any visitStatementExpression(SimpleLangParser::StatementExpressionContext *context) {
+    std::any visitStatementExpression(SimpleLangParser::StatementExpressionContext* context) {
         logger("statement expression %s", context->getText().c_str());
         logger.push();
 
@@ -254,7 +291,7 @@ public:
         return nullptr;
     }
 
-    std::any visitStatementVariableDeclaration(SimpleLangParser::StatementVariableDeclarationContext *context) {
+    std::any visitStatementVariableDeclaration(SimpleLangParser::StatementVariableDeclarationContext* context) {
         logger("statement variable declaration %s", context->getText().c_str());
         logger.push();
 
@@ -287,7 +324,7 @@ public:
         return nullptr;
     }
 
-    std::any visitStatementVariableAssignment(SimpleLangParser::StatementVariableAssignmentContext *context) {
+    std::any visitStatementVariableAssignment(SimpleLangParser::StatementVariableAssignmentContext* context) {
         logger("expression variable assignment %s", context->getText().c_str());
         logger.push();
 
@@ -312,7 +349,7 @@ public:
         return nullptr;
     }
 
-    std::any visitStatementReturn(SimpleLangParser::StatementReturnContext *context) {
+    std::any visitStatementReturn(SimpleLangParser::StatementReturnContext* context) {
         logger("statement return %s", context->getText().c_str());
         logger.push();
         
@@ -322,13 +359,13 @@ public:
             type = visit_expression(context->expression());
         }
 
-        std::optional<Function> function = gen.function_get_current_info();
+        std::optional<Type> return_type = gen.function_get_current_return_type();
         
-        if (!function.has_value()) {
+        if (!return_type.has_value()) {
             panic(context, CompilationErrorType::PARSE_ERROR, {});
         }
 
-        if (type != function.value().return_type) {
+        if (type != return_type.value()) {
             panic(context, CompilationErrorType::TYPE_MISMATCH, {});
         }
 
@@ -339,7 +376,7 @@ public:
         return nullptr;
     }
 
-    std::any visitStatementIf(SimpleLangParser::StatementIfContext *context) {
+    std::any visitStatementIf(SimpleLangParser::StatementIfContext* context) {
         logger("statement if %s", context->getText().c_str());
         logger.push();
         
@@ -367,7 +404,7 @@ public:
         return nullptr;
     }
 
-    std::any visitStatementWhile(SimpleLangParser::StatementWhileContext *context) {
+    std::any visitStatementWhile(SimpleLangParser::StatementWhileContext* context) {
         logger("statement while %s", context->getText().c_str());
         logger.push();
 
@@ -404,7 +441,7 @@ public:
     
     // Expression
 
-    std::any visitExpressionList(SimpleLangParser::ExpressionListContext *context) {
+    std::any visitExpressionList(SimpleLangParser::ExpressionListContext* context) {
         logger("expression list %s", context->getText().c_str());
         logger.push();
 
@@ -419,7 +456,7 @@ public:
         return types;
     }
 
-    std::any visitExpression(SimpleLangParser::ExpressionContext *context) {
+    std::any visitExpression(SimpleLangParser::ExpressionContext* context) {
         logger("expression %s", context->getText().c_str());
         logger.push();
 
@@ -497,7 +534,7 @@ public:
         return out_expression_type;
     }
 
-    std::any visitExpressionCallFunction(SimpleLangParser::ExpressionCallFunctionContext *context) {
+    std::any visitExpressionCallFunction(SimpleLangParser::ExpressionCallFunctionContext* context) {
         logger("expression call function %s", context->getText().c_str());
         logger.push();
 
@@ -507,7 +544,7 @@ public:
             panic(context, CompilationErrorType::IDENTIFIED_NOT_DECLARED, {});
         }
 
-        std::optional<Function> function = gen.function_get_info(identifier);
+        std::optional<FunctionInfo> function = gen.function_get_info(identifier);
 
         if (!function.has_value()) {
             panic(context, CompilationErrorType::PARSE_ERROR, {});
@@ -515,30 +552,34 @@ public:
 
         std::vector<Type> expression_types = visit_expression_list(context->expressionList());
 
-        if (function.value().argument_count != expression_types.size()) {
+        if (function.value().arguments.size() != expression_types.size()) {
             panic(context, CompilationErrorType::FUNCTION_CALLED_WITH_WRONG_NUMBER_OF_ARGS, {});
         }
 
-        for (size_t i = 0; i < expression_types.size(); i++) {
-            Type expression_type = expression_types.at(i);
-            Type argument_type = function.value().local_variables.at(i).type;
-
-            if (expression_type != argument_type) {
-                panic(context, CompilationErrorType::TYPE_MISMATCH, {});
-            }
+        if (function.value().arguments != expression_types) {
+            panic(context, CompilationErrorType::TYPE_MISMATCH, {});
         }
 
-        emit({
-            OpType::CALL_FUNCTION,
-            ByteCodeCallFunctionOp { function.value().code_index }
-        });
+        if (function.value().is_external) {
+            emit({
+                OpType::CALL_FUNCTION_EXTERNAL,
+                ByteCodeCallFunctionOp { function.value().code_index_or_function_index }
+            });
+        }
+
+        else {
+            emit({
+                OpType::CALL_FUNCTION,
+                ByteCodeCallFunctionOp { function.value().code_index_or_function_index }
+            });
+        }
 
         logger.pop();
 
         return function.value().return_type;
     }
 
-    std::any visitLiteral(SimpleLangParser::LiteralContext *context) {
+    std::any visitLiteral(SimpleLangParser::LiteralContext* context) {
         std::string valueString = context->getText();
 
         logger("literal %s", valueString.c_str());
@@ -562,7 +603,7 @@ public:
         }
 
         else if (context->STRING()) {
-            literal = { Type::STRING, valueString };
+            literal = { Type::STRING, valueString.substr(1, valueString.size() - 2) };
         }
 
         emit({
@@ -575,7 +616,7 @@ public:
         return literal.type;
     }
 
-    std::any visitType(SimpleLangParser::TypeContext *context) {
+    std::any visitType(SimpleLangParser::TypeContext* context) {
         logger("type %s", context->getText().c_str());
         logger.push();
 
@@ -588,22 +629,26 @@ public:
     }
 };
 
-CompilationResults generate_byte_code(antlr4::tree::ParseTree* tree) {
+CompilationResults generate_byte_code(antlr4::tree::ParseTree* tree, const std::vector<ExternalFunction>& external_functions) {
     BytecodeEmitter emitter;
 
+    for (const ExternalFunction& external_function : external_functions) {
+        CompilationErrorType err = emitter.gen.function_declare_external(external_function);
+
+        if (err != CompilationErrorType::NONE) {
+            CompilationError e;
+            e.type = err;
+
+            return {{}, e};
+        }
+    }
+
     try {
-        return {
-            emitter.visit_program(tree),
-            {}
-        };
+        return { emitter.visit_program(tree), {} };
     }
 
     catch (std::runtime_error e) {
         printf("Exception: %s\n", e.what());
-
-        return {
-            {},
-            emitter.gen.get_error()
-        };
+        return { {}, emitter.gen.get_error() };
     }
 }
